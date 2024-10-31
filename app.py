@@ -8,9 +8,24 @@ import webbrowser
 import time
 import threading
 import random
-import math
 import string
 import re
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
+
+
+# Create a new chatbot instance
+chatbot = ChatBot(
+    'MyBot',
+    storage_adapter='chatterbot.storage.SQLStorageAdapter',  # where it stores conversation history
+    database_uri='sqlite:///database.sqlite3'                # uses SQLite by default
+)
+
+# Set up a trainer for the chatbot
+trainer = ChatterBotCorpusTrainer(chatbot)
+
+# Train the chatbot using the ChatterBot Corpus English data
+trainer.train('chatterbot.corpus.english')
 
 
 recognizer = sr.Recognizer()
@@ -704,13 +719,20 @@ def get_further_expanded_response(user_input):
         "what is the best way to learn about myself": "Journaling, meditation, and self-reflection are great methods.",
 
         # Future and Aspirations
-        "what should i do with my life": "Explore your interests and passions; it can lead you to your purpose.",
+        "what should i do with my life": "Explore your interests and passions, it can lead you to your purpose.",
         "how do i set my life goals": "Think about what you want to achieve, then break it down into actionable steps.",
         "what is a good career path": "Choose one that aligns with your skills and passions!",
         "how do i find my passion": "Try new things and pay attention to what excites you the most."
     }
-    return further_expanded_responses.get(user_input.lower(), "I'm here for anything else you'd like to chat about!")
+    return further_expanded_responses.get(user_input.lower(), f"{Get_final_answer(user_input)}")
 
+def Get_final_answer(user_input):
+    try:
+        response = chatbot.get_response(user_input)
+        print("MyBot:", response)
+
+    except Exception as e:
+        print("I can not understand what are you saying.")
 
 def main():
     greet()
@@ -751,7 +773,7 @@ def main():
             city = get_city()
             print(city)
 
-        elif  "what is happening" in command or "what happened" in command:
+        elif  "what is happening" in command or "what happened" in command or "news" in command:
             get_news()
 
         elif "exit" in command or "stop" in command:
@@ -790,9 +812,9 @@ def main():
             add_to_todo_list(item)
 
         elif "open file" in command or "file" in command:
-            speak("What file do you want to open?")
-            name = listen()  # Assuming listen() gets the file name from the user
-            file_path = os.path.join("C:\\Users\\TECHNOSELLERS\\Downloads", name)
+            speak("Type your file path here.")
+            name =  input("User said (manual input): ")  # Assuming listen() gets the file name from the user
+            file_path = os.path.join("", name)
 
             # Check if the file exists before trying to open it
             if os.path.isfile(file_path):
@@ -813,11 +835,23 @@ def main():
             open_website("https://www.youtube.com/")
             speak("Opening youtube")
 
-        elif "open" in command or "run" in command:
+        elif "open web" in command or "run web" in command:
             speak("What would you like to open?")
             site = listen()
             if site:
                 open_website(site)
+
+        elif "open app" in command:
+            speak("Type your app name here.")
+            name = input("User said (manual input): ") # Assuming listen() gets the file name from the user
+            file_path = (f"C:\\Users\\TECHNOSELLERS\\Desktop\\{name}")
+
+            # Check if the file exists before trying to open it
+            if os.path.isfile(file_path):
+                os.startfile(file_path)  # This will open the file with its default application
+                speak(f"Opening app{name}.")
+            else:
+                speak(f"There were no app names {name} on your desktop.")
 
         elif "search" in command:
             speak("What would you like to search for?")
@@ -1107,7 +1141,7 @@ def main():
         
         elif "i have an error" in command or "i got a priblem" in command:
             speak("Oh! no. can i help, you to solve this problem.")
-
+# what is happening
         else:
             answer = get_expanded_response(command)
             speak(answer)
