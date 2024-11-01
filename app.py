@@ -12,6 +12,7 @@ import string
 import re
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification, pipeline
+import subprocess
 
 # Load pre-trained model and tokenizer for BERT
 model_name = "bert-base-uncased"
@@ -827,15 +828,20 @@ def main():
 
         elif "open file" == command or "file" == command:
             speak("Type your file path here.")
-            name =  input("User said (manual input): ")  # Assuming listen() gets the file name from the user
-            file_path = os.path.join("", name)
+            name = input("User said (manual input): ")  # Assume this input is the file path
+            file_path = os.path.join(name)
 
-            # Check if the file exists before trying to open it
+            # Check if the file exists before attempting to open
             if os.path.isfile(file_path):
-                os.startfile(file_path)  # This will open the file with its default application
-                speak(f"Opening file {name}")
+                try:
+                    # Using 'start' for Windows, 'open' for macOS, and 'xdg-open' for Linux
+                    command = f'start {file_path}' if os.name == 'nt' else f'open {file_path}' if os.name == 'posix' else f'xdg-open {file_path}'
+                    result = subprocess.run(command, capture_output=True, text=True, shell=True)
+                    speak(f"The output of your path is: \n{result.stdout if result.stdout else 'File opened successfully.'}")
+                except Exception as e:
+                    speak(f"An error occurred: {str(e)}")
             else:
-                speak(f"File {name} not found.")
+                speak("The file does not exist. Please check the path and try again.")
 
         elif "open facebook" == command:
             open_website("https://www.facebook.com/")
@@ -843,15 +849,15 @@ def main():
 
         elif "open itchio" == command:
             open_website("https://itch.io/")
-            speak("Opening itch.io")
+            speak("Opening itch.io.")
 
         elif "open whatsapp" == command:
-            open_website("https://www.youtube.com/")
-            speak("Opening youtube")
+            open_website("https://web.whatsapp.com/")
+            speak("Opening WhatsApp.")
 
         elif "open youtube" == command:
             open_website("https://www.youtube.com/")
-            speak("Opening youtube")
+            speak("Opening youtube.")
 
         elif "open web" == command or "run web" == command:
             speak("What would you like to open?")
@@ -860,16 +866,22 @@ def main():
                 open_website(site)
 
         elif "open app" == command:
-            speak("Type your app name here.")
-            name = input("User said (manual input): ") # Assuming listen() gets the file name from the user
-            file_path = (f"C:\\Users\\TECHNOSELLERS\\Desktop\\{name}")
+            #if "open file" == command or "file" == command:
+            speak("Type your app name path here.")
+            name = input("User said (manual input): ")  # Assume this input is the file path
+            file_path = os.path.join(name)
 
-            # Check if the file exists before trying to open it
-            if os.path.isfile(file_path):
-                os.startfile(file_path)  # This will open the file with its default application
-                speak(f"Opening app{name}.")
+            # Check if the file exists or if it's a valid shortcut
+            if os.path.isfile(file_path) or (os.path.splitext(file_path)[1] == '.lnk' and os.path.exists(file_path)):
+                try:
+                    # Using 'start' for Windows, 'open' for macOS, and 'xdg-open' for Linux
+                    command = f'start {file_path}' if os.name == 'nt' else f'open {file_path}' if os.name == 'posix' else f'xdg-open {file_path}'
+                    result = subprocess.run(command, capture_output=True, text=True, shell=True)
+                    speak(f"The output of your path is: \n{result.stdout if result.stdout else 'File or shortcut opened successfully.'}")
+                except Exception as e:
+                    speak(f"An error occurred: {str(e)}")
             else:
-                speak(f"There were no app names {name} on your desktop.")
+                speak("The app or it's shortcut does not exist. Please check the app name and try again.")
 
         elif "search" == command:
             speak("What would you like to search for?")
@@ -918,30 +930,30 @@ def main():
                 except Exception as e:
                     speak(f"Could not close {name}. Error: {e}.")
 
-        elif "what is apple" in command:
+        elif "what is apple" == command:
             speak("which are you saying, about apple fruit or apple company, do you want to visit apple official web.")
             answer = listen()
             if answer == "yes" or answer == "visit":
                 webbrowser.open("https://www.apple.com/")
                 speak("opening apple official web")
 
-        elif "samsung" in command or "oppo" in command or "android" in command:
+        elif "samsung" == command or "oppo" == command or "android" in command:
             speak("The mobile which you are talking is android. Do you want to open android official web")
             answer = license()
             if answer == "yes":
                 webbrowser.open("https://www.android.com/")
                 speak("opening anddroid official web")
 
-        elif "random" in command:
+        elif "random" == command:
             speak(f"Your random number is {random.randint(-1000000, 1000000)}.")
 
-        elif "numeric" in command:
+        elif "numeric" == command:
             speak("say numeric what you want to try.")
             s = listen()
             if s:
                 speak(f"{s.isdigit()}")
 
-        elif "smallest factor" in command:
+        elif "smallest factor" == command:
             speak("Say Number! to get smallest factor")
             n = int(listen())
             if n:
@@ -949,78 +961,78 @@ def main():
                     if n % i == 0 and is_prime(i):
                         speak(f"{i}")
 
-        elif "ascii value" in command:
+        elif "ascii value" == command:
             speak("Say Ascii value.")
             char = listen()
             if char:
                 speak(f"Your value is {ord(char)}.")
 
-        elif "char from ascii" in command:
+        elif "char from ascii" == command:
             speak("What thing char do you want.")
             Str = listen()
             if Str:
                 speak(f"Your value is {chr(Str)}.")
         
-        elif "get quote" in command:
+        elif "get quote" == command:
             speak("The only limit to our realization of tomorrow is our doubts of today.")
 
-        elif "reverse word" in command:
+        elif "reverse word" == command:
             speak("Say a word to reverse.")
             s = listen
             if s:
                 speak(str(s[::-1]))
 
-        elif "hex to rgb"in command:
+        elif "hex to rgb" == command:
             hex_color = hex_color.lstrip('#')
             speak(str(tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))))
 
-        elif "longest word"in command:
+        elif "longest word" == command:
             speak("Say sentence to get longest word.")
             sentence = listen()
             if sentence:
                 words = sentence.split()
                 speak("The longest word in the sentence is "+str(max(words, key=len))+'.')
 
-        elif "smallest word"in command:
+        elif "smallest word" == command:
             speak("Say sentence to get smallest word.")
             sentence = listen()
             if sentence:
                 words = sentence.split()
                 speak("The smallest word is "+str(sum(c.isdigit() for c in s))+".")
 
-        elif "smallest prime factor"in command:
+        elif "smallest prime factor" == command:
             speak("Say a number to get smallest factor")
             for i in range(2, n + 1):
                 if n % i == 0 and is_prime(i):
                     speak("The smallest prime factor is "+str(i)+".")
 
-        elif "count words" in command:
+        elif "count words" == command:
             speak("Word to count chars")
             s = listen
             speak(str(len(s.split())))
 
-        elif "time" in command:
+        elif "time" == command:
             speak("The current time is "+str(datetime.datetime.now().strftime("%H:%M:%S"))+".")
 
-        elif "is valid email" in command:
+        elif "is valid email" == command:
             speak('What email you are asking for is valid.')
             email = listen()
             if email:
                 pattern = r"[^@]+@[^@]+\.[^@]+"
                 speak( re.match(pattern, email) is not None)
 
-        elif "count vowels" in command:
+        elif "count vowels" == command:
             speak("Say the word to count Vowels.")
             s = int(listen)
             if s:
                 speak("The count of vowels is "+str(sum(1 for char in s if char.lower() in 'aeiou')))
 
-        elif "count consonants" in command:
+        elif "count consonants" == command:
             speak("Say a word to count consonants")
             s = listen()
             speak("The count of consonants is "+str(sum(1 for char in s if char.isalpha() and char.lower() not in 'aeiou')))
 
-        elif 'create directory' in command:
+        elif 'create directory' == command:
             speak("Say directory.")
             directory = listen()
             if directory:
@@ -1028,98 +1040,99 @@ def main():
                 os.makedirs(directory, exist_ok=True)
                 speak('Directory created.')
 
-        elif "count spaces"in command:
+        elif "count spaces" == command:
             speak("Say a sentence to count spaces.")
             s = listen
             if s:
                 speak("The count of spaces in a sentence is "+str(s.count(' '))+".")
 
-        elif "square" in command:
+        elif "square" == command:
             speak("Say Number to get square.")
             n = int(listen)
             speak(str(n ** 2))
         
-        elif "cube" in command:
+        elif "cube" == command:
             speak("Say Number to get cube.")
             n = int(listen)
             speak(str(n ** 3))
 
-        elif "decimal to binary" in command:
+        elif "decimal to binary" == command:
             speak("Say numbers to get binary.")
             n = int(listen())
             speak(str(bin(n).replace("0b", "")))
 
-        elif 'binary to decimal' in command:
+        elif 'binary to decimal' == command:
             speak("Say bunary to convert into decimal.")
             b = int(listen())
             if b:
                 speak(str(int(b, 2)))
-        elif 'first element' in command:
+
+        elif 'first element' == command:
             speak("Say word to get first element.")
             lst = listen()
             if lst:
                 value = lst[0] if lst else None
                 speak(str(value))
 
-        elif "max in dict"in command:
+        elif "max in dict" == command:
             speak("Say directory.")
             d = listen()
             if d:
                 speak(str(max(d.values())))
 
-        elif "min in dict"in command:
+        elif "min in dict" == command:
             speak("Say directory.")
             d = listen()
             if d:
                 speak(str(min(d.values())))
 
-        elif "key of max value"in command:
+        elif "key of max value" == command:
             speak("Say drectory to get max value.")
             d = listen()
             if d:
                 speak(str(max(d, key=d.get)))
 
-        elif 'key of min value'in command:
+        elif 'key of min value' == command:
             speak("Say drectory to get min value.")
             d = listen()
             if d:
                 speak(str(min(d, key=d.get)))
 
-        elif "current unix timestamp" in command:
+        elif "current unix timestamp"  == command:
             speak("Your timestamp value is "+str(int(time.time()))+".")
 
         elif "timestamp to human readable"in command:
             ts = int(time.time())
             datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-        elif "day of week"in command:
+        elif "day of week" == command:
             date_string = f"{datetime.datetime.now().date}"
             date = datetime.datetime.strptime(date_string, '%Y-%m-%d')
             speak(date.strftime("%A"))
 
-        elif "calculate age" in command:
+        elif "calculate age" == command:
             speak("Say your birth date.")
             birth_date = listen()
             today = datetime.datetime.now()
             birth_date = datetime.datetime.strptime(birth_date, '%Y-%m-%d')
             speak(str(today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))))
 
-        elif "random color"in command:
+        elif "random color" == command:
             color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
             speak(color)
 
-        elif "count lines"in command:
-            speak("Say file name or path.")
-            filename = listen()
+        elif "count lines" == command:
+            speak("Input your file path here.")
+            filename = input("User said (manual input): ")
             if filename:
                 with open(filename, 'r') as file:
                     some = str(len(file.readlines()))
                     speak(some)
 
-        elif "random element from dict"in command:
+        elif "random element from dict" == command:
             speak(str(random.choice(list(d.items())) if d else None))
 
-        elif "delete directory" in command:
+        elif "delete directory" == command:
             speak("Which directory you want to delete.")
             directory = listen()
             if directory:
@@ -1127,12 +1140,12 @@ def main():
                 os.rmdir(directory)
                 speak("Directory is deleted.")
 
-        elif "generate password"in command:
+        elif "generate password" == command:
             characters = string.ascii_letters + string.digits + string.punctuation
             length = 12
             speak("Your passor is "+''.join(random.choice(characters) for _ in range(length)))
 
-        elif "check internet" in command:
+        elif "check internet" == command:
             try:
                 # Attempting to connect to Google to check internet availability
                 response = requests.get("https://www.google.com", timeout=5)
@@ -1146,7 +1159,7 @@ def main():
                 speak("The connection timed out. Please check your internet.")
 
 
-        elif "get ip address"in command:
+        elif "get ip address" == command:
             apikey = {requests.get("https://api.ipify.org").text}
             speak(f"Your api key is {apikey}.")
 
@@ -1157,10 +1170,10 @@ def main():
                 speak(str(len(s)))
 
         
-        elif "i have an error" in command or "i got a priblem" in command:
+        elif "i have an error" == command or "i got a priblem" == command:
             speak("Oh! no. can i help, you to solve this problem.")
 
-        elif "what is your name" in command:
+        elif "what is your name" == command:
             speak("My name is jarvis AI.")
 
         else:

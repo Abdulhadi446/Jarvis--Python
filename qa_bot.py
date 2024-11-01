@@ -29,7 +29,7 @@ def generate_serious_response(input_text):
     response = response_generator(serious_prompt, max_length=50, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)[0]['generated_text']
     
     # Filter out casual language by removing extra text
-    serious_response = response.split("\n")[0].strip()  # Take the first line as the response
+    serious_response = response#.split("\n")[0].strip()  # Take the first line as the response
     return serious_response
 
 # Main program loop
