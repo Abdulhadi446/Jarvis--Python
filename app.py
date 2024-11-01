@@ -10,22 +10,39 @@ import threading
 import random
 import string
 import re
-from chatterbot import ChatBot
-from chatterbot.trainers import ChatterBotCorpusTrainer
+import torch
+from transformers import BertTokenizer, BertForSequenceClassification, pipeline
 
+# Load pre-trained model and tokenizer for BERT
+model_name = "bert-base-uncased"
+tokenizer = BertTokenizer.from_pretrained(model_name)
+model = BertForSequenceClassification.from_pretrained(model_name)
 
-# Create a new chatbot instance
-chatbot = ChatBot(
-    'MyBot',
-    storage_adapter='chatterbot.storage.SQLStorageAdapter',  # where it stores conversation history
-    database_uri='sqlite:///database.sqlite3'                # uses SQLite by default
-)
+# Set up a text generation pipeline with GPT-2
+response_generator = pipeline("text-generation", model="gpt2")
 
-# Set up a trainer for the chatbot
-trainer = ChatterBotCorpusTrainer(chatbot)
+# Function to classify text
+def classify_text(texts):
+    inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt", max_length=512)
 
-# Train the chatbot using the ChatterBot Corpus English data
-trainer.train('chatterbot.corpus.english')
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    logits = outputs.logits
+    predictions = torch.argmax(logits, dim=-1)
+
+    return predictions
+
+# Function to generate a serious AI response
+def generate_serious_response(input_text):
+    # Create a focused prompt to encourage serious responses
+    serious_prompt = f"{input_text}"
+    response = response_generator(serious_prompt, max_length=50, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)[0]['generated_text']
+    
+    # Filter out casual language by removing extra text
+    serious_response = response#.split("\n")[0].strip()  # Take the first line as the response
+    return serious_response
+
 
 
 recognizer = sr.Recognizer()
@@ -724,15 +741,12 @@ def get_further_expanded_response(user_input):
         "what is a good career path": "Choose one that aligns with your skills and passions!",
         "how do i find my passion": "Try new things and pay attention to what excites you the most."
     }
-    return further_expanded_responses.get(user_input.lower(), f"{Get_final_answer(user_input)}")
+    return further_expanded_responses.get(user_input.lower(), f"{answer(user_input)}")
 
-def Get_final_answer(user_input):
-    try:
-        response = chatbot.get_response(user_input)
-        print("MyBot:", response)
-
-    except Exception as e:
-        print("I can not understand what are you saying.")
+def answer(user_input):
+    # Generate a serious AI response based on the input text
+    ai_response = generate_serious_response(user_input)
+    return(f"{ai_response}")
 
 def main():
     greet()
@@ -741,13 +755,13 @@ def main():
     while True:
         command = listen()
 
-        if "wikipedia" in command or "summary" in command:
+        if "wikipedia" == command or "summary" == command:
             speak("What topic would you like to know about?")
             topic = listen()
             if topic:
                 get_wikipedia_info(topic)
         
-        elif "countdown timer" in command:
+        elif "countdown timer" == command:
             speak("How many seconds.")
             seconds = int(listen())
             if seconds:
@@ -760,7 +774,7 @@ def main():
                     seconds -= 1
                 speak("Time's up!")
 
-        elif "weather" in command or "environment" in command:
+        elif "weather" == command or "environment" == command:
             # Get the city and then use it to fetch the weather
             city = get_city()
             if "Error" not in city:
@@ -769,34 +783,34 @@ def main():
             else:
                 print(city)
                 
-        elif "city" in command:
+        elif "city" == command:
             city = get_city()
             print(city)
 
-        elif  "what is happening" in command or "what happened" in command or "news" in command:
+        elif  "what is happening" == command or "what happened" == command or "news" in command:
             get_news()
 
-        elif "exit" in command or "stop" in command:
+        elif "exit" == command or "stop" == command:
             speak("Are you sure you want to exit?")
             confirm_exit = listen()
             if "yes" in confirm_exit or "exit" in confirm_exit:
                 speak("Goodbye!")
                 break
         
-        elif "tell me a joke" in command:
+        elif "tell me a joke" == command:
             tell_joke()
 
-        elif "recommend a movie" in command:
+        elif "recommend a movie" == command:
             recommend_movie()
 
-        elif "set a timer for" in command:
+        elif "set a timer for" == command:
             try:
                 minutes = int(command.split("for")[-1].strip().split()[0])  # Extract minutes
                 set_timer(minutes)
             except ValueError:
                 speak("I couldn't understand the number of minutes.")
 
-        elif "convert" in command:
+        elif "convert" == command:
             # Example: "Convert 5 miles to kilometers"
             parts = command.split()
             try:
@@ -807,11 +821,11 @@ def main():
             except (IndexError, ValueError):
                 speak("I couldn't understand the conversion request.")
 
-        elif "add to my to do list" in command:
+        elif "add to my to do list" == command:
             item = command.split("add to my to do list")[-1].strip()
             add_to_todo_list(item)
 
-        elif "open file" in command or "file" in command:
+        elif "open file" == command or "file" == command:
             speak("Type your file path here.")
             name =  input("User said (manual input): ")  # Assuming listen() gets the file name from the user
             file_path = os.path.join("", name)
@@ -823,25 +837,29 @@ def main():
             else:
                 speak(f"File {name} not found.")
 
-        elif "open facebook" in command:
+        elif "open facebook" == command:
             open_website("https://www.facebook.com/")
             speak("Opening facebook")
 
-        elif "open itchio" in command:
+        elif "open itchio" == command:
             open_website("https://itch.io/")
             speak("Opening itch.io")
 
-        elif "open youtube" in command:
+        elif "open whatsapp" == command:
             open_website("https://www.youtube.com/")
             speak("Opening youtube")
 
-        elif "open web" in command or "run web" in command:
+        elif "open youtube" == command:
+            open_website("https://www.youtube.com/")
+            speak("Opening youtube")
+
+        elif "open web" == command or "run web" == command:
             speak("What would you like to open?")
             site = listen()
             if site:
                 open_website(site)
 
-        elif "open app" in command:
+        elif "open app" == command:
             speak("Type your app name here.")
             name = input("User said (manual input): ") # Assuming listen() gets the file name from the user
             file_path = (f"C:\\Users\\TECHNOSELLERS\\Desktop\\{name}")
@@ -853,19 +871,19 @@ def main():
             else:
                 speak(f"There were no app names {name} on your desktop.")
 
-        elif "search" in command:
+        elif "search" == command:
             speak("What would you like to search for?")
             query = listen()
             if query:
                 webbrowser.open(f"https://www.google.com/search?q={query}")
 
-        elif "hello" in command or "hi" in command:
+        elif "hello" == command or "hi" == command:
             speak("hello. I am here to help you today.")
 
-        elif "what are you doing" in command:
+        elif "what are you doing" == command:
             speak("I am answering your commands.")
 
-        elif "location" in command or "country" in command or "region" in command or "cordinates" in command:
+        elif "location" == command or "country" == command or "region" == command or "cordinates" == command:
             try:
                 response = requests.get("https://ipinfo.io")
                 data = response.json()
@@ -878,7 +896,7 @@ def main():
                 print(f"Jarvis: Error: {e}")
 
 
-        elif "close" in command or "unrun" in command:
+        elif "close" == command or "unrun" == command:
             speak("Which app would you like to close?")
             name = listen()
             
@@ -1141,7 +1159,10 @@ def main():
         
         elif "i have an error" in command or "i got a priblem" in command:
             speak("Oh! no. can i help, you to solve this problem.")
-# what is happening
+
+        elif "what is your name" in command:
+            speak("My name is jarvis AI.")
+
         else:
             answer = get_expanded_response(command)
             speak(answer)
