@@ -33,7 +33,7 @@ def classify_text(texts):
     predictions = torch.argmax(logits, dim=-1)
 
     return predictions
-
+# date
 # Function to generate a serious AI response
 def generate_serious_response(input_text):
     # Create a focused prompt to encourage serious responses
@@ -1013,8 +1013,15 @@ def main():
             s = listen
             speak(str(len(s.split())))
 
-        elif "time" == command:
-            speak("The current time is "+str(datetime.datetime.now().strftime("%H:%M:%S"))+".")
+        elif "time" == command or "now" == command or "date" == command or "year" == command or "month" == command or "day" == command:
+            now = datetime.datetime.now()  # Get the current date and time only once
+            time = now.strftime("%H:%M:%S")  # Format time as HH:MM:SS
+            date = now.strftime("%Y-%m-%d")  # Format date as YYYY-MM-DD
+            day = now.day  # Get the day of the month
+            month = now.month  # Get the month number
+            year = now.year  # Get the current year
+            speak(f"The current time is {time}, the current date is {date}, the current day is {day}, the current month is {month}, and the current year is {year}.")
+
 
         elif "is valid email" == command:
             speak('What email you are asking for is valid.')
