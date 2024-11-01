@@ -1013,7 +1013,7 @@ def main():
             s = listen
             speak(str(len(s.split())))
 
-        elif "time" == command or "now" == command or "date" == command or "year" == command or "month" == command or "day" == command:
+        elif "time" == command or "now" == command or "date" == command or "year" == command or "month" == command or "day" == command or "current time" == command or "current now" == command or "current date" == command or "current year" == command or "current month" == command or "current day" == command:
             now = datetime.datetime.now()  # Get the current date and time only once
             time = now.strftime("%H:%M:%S")  # Format time as HH:MM:SS
             date = now.strftime("%Y-%m-%d")  # Format date as YYYY-MM-DD
