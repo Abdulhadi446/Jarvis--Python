@@ -72,11 +72,13 @@ def listen():
             speak("Sorry, I can't understand. Please type your command.")
             # Ask for manual input if speech recognition fails
             manual_command = input("User said (manual input): ")
+            #manual_command = "Hello"
             return manual_command.lower()
         except sr.RequestError:
             speak("Sorry, my speech service is down. Please type your command.")
             # Ask for manual input if the service is down
             manual_command = input("User said: ")
+            #manual_command = "Hello"
             return manual_command.lower()
 
 def greet():
@@ -1175,6 +1177,25 @@ def main():
 
         elif "what is your name" == command:
             speak("My name is jarvis AI.")
+
+        elif "run cmd" == command or "run command" == command:
+            speak("Which command do you want to run.")
+            cmd = input("User said (manual input): ")
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+            print(result.stdout)
+
+
+        elif "run cmd" == command or "run command" == command:
+            speak("Which command do you want to run?")
+            cmd = input("User said (manual input): ")
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
+                print("Command output:", result.stdout)
+            except subprocess.CalledProcessError as e:
+                speak("The command failed to execute.")
+            except Exception as e:
+                speak("An unexpected error occurred.")
+
 
         else:
             answer = get_expanded_response(command)
