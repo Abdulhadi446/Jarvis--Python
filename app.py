@@ -10,43 +10,32 @@ import threading
 import random
 import string
 import re
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification, pipeline
 import subprocess
+from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
+from comtypes import CLSCTX_ALL
 import ctypes
-
-# Load pre-trained model and tokenizer for BERT
-model_name = "bert-base-uncased"
-tokenizer = BertTokenizer.from_pretrained(model_name)
-model = BertForSequenceClassification.from_pretrained(model_name)
-
-# Set up a text generation pipeline with GPT-2
-response_generator = pipeline("text-generation", model="gpt2")
-
-# Function to classify text
-def classify_text(texts):
-    inputs = tokenizer(texts, padding=True, truncation=True, return_tensors="pt", max_length=512)
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    logits = outputs.logits
-    predictions = torch.argmax(logits, dim=-1)
-
-    return predictions
-# date
-# Function to generate a serious AI response
-def generate_serious_response(input_text):
-    # Create a focused prompt to encourage serious responses
-    serious_prompt = f"{input_text}"
-    response = response_generator(serious_prompt, max_length=50, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)[0]['generated_text']
-    
-    # Filter out casual language by removing extra text
-    serious_response = response#.split("\n")[0].strip()  # Take the first line as the response
-    return serious_response
+from ctypes import POINTER, cast
+from comtypes import CLSCTX_ALL
+from comtypes.client import CreateObject
+from ctypes.wintypes import DWORD
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 
+# creaton of chat_history_ids = None  # Start with no chat history
+chat_history_ids = None
 
+# add microsoft/DialoGPT-medium AI
+tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+
+# Ensure tokenizer has an end-of-sentence token
+if tokenizer.eos_token is None:
+    tokenizer.add_special_tokens({'eos_token': '<|endoftext|>'})
+    model.resize_token_embeddings(len(tokenizer))
+
+# create recognizers
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
 
@@ -217,16 +206,27 @@ def get_news():
     else:
         speak("News service is unavailable. Please set your News API key in the environment variables.")
 
-def increase_volume(increment=10):
-    # Get the current volume level
-    volume = ctypes.windll.user32.GetSystemVolume()
-    
-    # Calculate the new volume level
-    new_volume = min(volume + increment, 100)  # Cap the volume at 100%
-    
-    # Set the new volume level
-    ctypes.windll.user32.SetSystemVolume(new_volume)
-    print(f"Volume increased to {new_volume}%")
+def get_current_volume():
+    # Access the default audio device (speakers/headphones)
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+    # Get the current master volume level (0.0 to 1.0)
+    current_volume = volume.GetMasterVolumeLevelScalar()
+    return current_volume# Returns as a percentage for easier readability
+
+def add_system_volume(level):
+    current_volume = get_current_volume()
+    level += current_volume
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+    # Set the master volume level (float from 0.0 to 1.0)
+    volume.SetMasterVolumeLevelScalar(level, None)
 
 # Example usage:
 
@@ -766,16 +766,61 @@ def count(noString):
         No = eval(noString)  # Evaluates expressions like "1 + 2" to 3
         return f"{noString} is equal to {str(No)}."
     except Exception:
-        return f"{answer(noString)}"
+        return f"{get_response(noString)}"
 
-def answer(user_input):
+def wiki(user_input):
+    """Fetch information from Wikipedia."""
     try:
         summary = wikipedia.summary(user_input, sentences=2)
-        speak(summary)
+        return(summary)
     except wikipedia.exceptions.DisambiguationError:
-        speak("The topic was too broad, please specify.")
+        return get_response(user_input)
     except Exception:
-        speak("Sorry, I couldn't fetch information on that topic.")
+        return get_response(user_input)
+
+def get_response(user_input):
+    global chat_history_ids  # Access the global chat history variable
+    
+    # Encode the user input and add the end-of-sentence token
+    new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors="pt")
+    
+    # Concatenate the new input with the chat history if it exists
+    if chat_history_ids is not None:
+        chat_history_ids = torch.cat([chat_history_ids, new_input_ids], dim=-1)
+    else:
+        chat_history_ids = new_input_ids
+
+    # Create an attention mask for the chat history
+    attention_mask = torch.ones(chat_history_ids.shape, dtype=torch.long)
+
+    # Generate a response using the model
+    bot_output = model.generate(
+        chat_history_ids,
+        attention_mask=attention_mask,
+        max_length=1000,
+        pad_token_id=tokenizer.eos_token_id,
+        do_sample=True,        # Enable sampling to introduce randomness
+        top_k=50,               # Limit to top-k words for generation
+        top_p=0.95              # Nucleus sampling
+    )
+
+    # Decode the bot's response and trim it from the history length
+    response = tokenizer.decode(bot_output[:, chat_history_ids.shape[-1]:][0], skip_special_tokens=True)
+    
+    # Introduce varied responses if the model output is a repetition of the input
+    response_variations = [
+        "That's an interesting question!",
+        "Let me think about that...",
+        "I'm not quite sure how to respond to that.",
+        "Can you clarify what you mean?",
+        "That's a bit tricky!"
+    ]
+    
+    # Adjust response if it is overly repetitive
+    if response.strip() in [user_input, user_input + '?']:
+        response = random.choice(response_variations)
+
+    return response
 
 def main():
     greet()
@@ -1230,11 +1275,11 @@ def main():
                 speak("An unexpected error occurred.")
 
         elif "increase the volume" == command or "increase volume" == command:
-            increase_volume(10)  # Increase volume by 10%
+            add_system_volume(0.1)  # Increase volume by 10%
             speak("Increasing volume by 10%.")
 
         elif "decrease the volume" == command or "decrease volume" == command:
-            increase_volume(10)  # Increase volume by 10%
+            add_system_volume(-0.1)  # Increase volume by 10%
             speak("decreasing volume by 10%.")
 
         else:
