@@ -13,6 +13,7 @@ import re
 import torch
 from transformers import BertTokenizer, BertForSequenceClassification, pipeline
 import subprocess
+import ctypes
 
 # Load pre-trained model and tokenizer for BERT
 model_name = "bert-base-uncased"
@@ -215,6 +216,19 @@ def get_news():
             speak("No articles found.")
     else:
         speak("News service is unavailable. Please set your News API key in the environment variables.")
+
+def increase_volume(increment=10):
+    # Get the current volume level
+    volume = ctypes.windll.user32.GetSystemVolume()
+    
+    # Calculate the new volume level
+    new_volume = min(volume + increment, 100)  # Cap the volume at 100%
+    
+    # Set the new volume level
+    ctypes.windll.user32.SetSystemVolume(new_volume)
+    print(f"Volume increased to {new_volume}%")
+
+# Example usage:
 
 # Basic Template for Talking Commands in Python AI
 def get_response(user_input):
@@ -744,12 +758,24 @@ def get_further_expanded_response(user_input):
         "what is a good career path": "Choose one that aligns with your skills and passions!",
         "how do i find my passion": "Try new things and pay attention to what excites you the most."
     }
-    return further_expanded_responses.get(user_input.lower(), f"{answer(user_input)}")
+    return further_expanded_responses.get(user_input.lower(), f"{count(user_input)}")
+
+def count(noString):
+    No = 0
+    try:
+        No = eval(noString)  # Evaluates expressions like "1 + 2" to 3
+        return f"{noString} is equal to {str(No)}."
+    except Exception:
+        return f"{answer(noString)}"
 
 def answer(user_input):
-    # Generate a serious AI response based on the input text
-    ai_response = generate_serious_response(user_input)
-    return(f"{ai_response}")
+    try:
+        summary = wikipedia.summary(user_input, sentences=2)
+        speak(summary)
+    except wikipedia.exceptions.DisambiguationError:
+        speak("The topic was too broad, please specify.")
+    except Exception:
+        speak("Sorry, I couldn't fetch information on that topic.")
 
 def main():
     greet()
@@ -1203,6 +1229,13 @@ def main():
             except Exception as e:
                 speak("An unexpected error occurred.")
 
+        elif "increase the volume" == command or "increase volume" == command:
+            increase_volume(10)  # Increase volume by 10%
+            speak("Increasing volume by 10%.")
+
+        elif "decrease the volume" == command or "decrease volume" == command:
+            increase_volume(10)  # Increase volume by 10%
+            speak("decreasing volume by 10%.")
 
         else:
             answer = get_expanded_response(command)
