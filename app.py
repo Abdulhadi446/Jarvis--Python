@@ -13,9 +13,6 @@ import re
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import subprocess
-from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume
-from comtypes import CLSCTX_ALL
-import ctypes
 from ctypes import POINTER, cast
 from comtypes import CLSCTX_ALL
 from comtypes.client import CreateObject
@@ -44,6 +41,7 @@ api_key = ("921bcee8ed642d28e47c4a003f6e5e9e")  # Ensure the environment variabl
 news_api_key = ("f785af0b988f4820a99a5b03d045bebe")  # Set your news API key as an environment variable
 
 def speak(text):
+    text = str(text)
     """Speak the provided text."""
     engine.say(text)
     print("Jarvis: " + text)
@@ -215,7 +213,7 @@ def get_current_volume():
 
     # Get the current master volume level (0.0 to 1.0)
     current_volume = volume.GetMasterVolumeLevelScalar()
-    return current_volume# Returns as a percentage for easier readability
+    return current_volume
 
 def add_system_volume(level):
     current_volume = get_current_volume()
@@ -228,7 +226,15 @@ def add_system_volume(level):
     # Set the master volume level (float from 0.0 to 1.0)
     volume.SetMasterVolumeLevelScalar(level, None)
 
-# Example usage:
+def set_system_volume(level):
+    current_volume = get_current_volume()
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+    # Set the master volume level (float from 0.0 to 1.0)
+    volume.SetMasterVolumeLevelScalar(level, None)
 
 # Basic Template for Talking Commands in Python AI
 def get_response(user_input):
@@ -756,7 +762,11 @@ def get_further_expanded_response(user_input):
         "what should i do with my life": "Explore your interests and passions, it can lead you to your purpose.",
         "how do i set my life goals": "Think about what you want to achieve, then break it down into actionable steps.",
         "what is a good career path": "Choose one that aligns with your skills and passions!",
-        "how do i find my passion": "Try new things and pay attention to what excites you the most."
+        "how do i find my passion": "Try new things and pay attention to what excites you the most.",
+
+        #My questions
+        "" : "",
+        "what are smart watches":"Smart watches are the watches but they have few capablities to do small things."
     }
     return further_expanded_responses.get(user_input.lower(), f"{count(user_input)}")
 
@@ -766,13 +776,13 @@ def count(noString):
         No = eval(noString)  # Evaluates expressions like "1 + 2" to 3
         return f"{noString} is equal to {str(No)}."
     except Exception:
-        return f"{get_response(noString)}"
+        return f"{wiki(noString)}"
 
 def wiki(user_input):
     """Fetch information from Wikipedia."""
     try:
         summary = wikipedia.summary(user_input, sentences=2)
-        return(summary)
+        return("According to wikipedia "+summary)
     except wikipedia.exceptions.DisambiguationError:
         return get_response(user_input)
     except Exception:
@@ -803,7 +813,7 @@ def get_response(user_input):
         top_k=50,               # Limit to top-k words for generation
         top_p=0.95              # Nucleus sampling
     )
-
+    
     # Decode the bot's response and trim it from the history length
     response = tokenizer.decode(bot_output[:, chat_history_ids.shape[-1]:][0], skip_special_tokens=True)
     
@@ -819,8 +829,8 @@ def get_response(user_input):
     # Adjust response if it is overly repetitive
     if response.strip() in [user_input, user_input + '?']:
         response = random.choice(response_variations)
-
-    return response
+    first_line = response.split('\n')[0]
+    return "Bot: "+first_line
 
 def main():
     greet()
@@ -835,7 +845,7 @@ def main():
             if topic:
                 get_wikipedia_info(topic)
         
-        elif "countdown timer" == command:
+        elif "countdown timer" == command or "coundown timer" == command or "timer" == command:
             speak("How many seconds.")
             seconds = int(listen())
             if seconds:
@@ -920,7 +930,7 @@ def main():
             open_website("https://www.facebook.com/")
             speak("Opening facebook")
 
-        elif "open itchio" == command:
+        elif "open itchio" == command or "open itch.io" == command:
             open_website("https://itch.io/")
             speak("Opening itch.io.")
 
@@ -1225,7 +1235,7 @@ def main():
             length = 12
             speak("Your passor is "+''.join(random.choice(characters) for _ in range(length)))
 
-        elif "check internet" == command:
+        elif "check internet" == command or "is internet working"  == command:
             try:
                 # Attempting to connect to Google to check internet availability
                 response = requests.get("https://www.google.com", timeout=5)
@@ -1279,11 +1289,20 @@ def main():
             speak("Increasing volume by 10%.")
 
         elif "decrease the volume" == command or "decrease volume" == command:
-            add_system_volume(-0.1)  # Increase volume by 10%
+            add_system_volume(-0.1)  # decrease volume by 10%
             speak("decreasing volume by 10%.")
 
+        elif "set volume to 100" == command or "set volume to full" == command or "full volume" == command:
+            set_system_volume(1)
+            speak("Volume is set to 100%")
+ 
+        elif "set volume to 0" == command or command == "mute" or "mute volume" == command:
+            speak("Volume is set to 0%")
+            set_system_volume(0)
+            
+
         else:
-            answer = get_expanded_response(command)
+            answer = get_response(command)
             speak(answer)
 
 if __name__ == "__main__":
