@@ -1378,7 +1378,7 @@ def main():
             code = input("Type code here: ")
             execute_code(code)
 
-        elif "google search" == command:
+        elif "google search" == command or "search" == command or "google" == command:
             speak("What do you want to search.")
             num = listen()
             ans(num)
