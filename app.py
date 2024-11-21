@@ -1381,7 +1381,7 @@ def main():
         elif "google search" == command or "search" == command or "google" == command:
             speak("What do you want to search.")
             num = listen()
-            ans(num)
+            speak(ans(num))
 
         else:
             answer = get_response(command)
