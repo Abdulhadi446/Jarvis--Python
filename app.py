@@ -18,6 +18,7 @@ from comtypes import CLSCTX_ALL
 from comtypes.client import CreateObject
 from ctypes.wintypes import DWORD
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from bs4 import BeautifulSoup
 
 
 # creaton of chat_history_ids = None  # Start with no chat history
@@ -46,17 +47,7 @@ def speak(text):
     engine.say(text)
     print("Jarvis: " + text)
     engine.runAndWait()
-
-def execute_code(code: str):
-    """Execute Python code provided by the user."""
-    local_vars = {}
-    try:
-        exec(code, {}, local_vars)
-    except Exception as e:
-        return {"error": str(e)}
-    
-    return local_vars
-
+# 
 def listen():
     """Listen to the user's command."""
     with sr.Microphone() as source:
@@ -98,6 +89,45 @@ def get_wikipedia_info(query):
         speak("The topic was too broad, please specify.")
     except Exception:
         speak("Sorry, I couldn't fetch information on that topic.")
+
+def google_search(query, num_results=5):
+    """
+    Perform a Google search and return summaries of the top results.
+
+    Parameters:
+        query (str): The search query.
+        num_results (int): Number of results to fetch summaries for.
+
+    Returns:
+        list: A list of dictionaries with titles, links, and summaries.
+    """
+    # Prepare the Google search URL
+    query = query.replace(' ', '+')
+    url = f"https://www.google.com/search?q={query}&num={num_results}"
+
+    # Add headers to mimic a browser request
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    # Send the GET request
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return f"Failed to fetch results. Status code: {response.status_code}"
+
+    # Parse the HTML response
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # Extract search result elements
+    results = []
+    for result in soup.select('.tF2Cxc')[:num_results]:
+        title = result.select_one('.DKV0Md').text
+        link = result.select_one('.yuRUbf a')['href']
+        snippet = result.select_one('.IsZvec').text if result.select_one('.IsZvec') else 'No summary available.'
+        results.append({'title': title, 'link': link, 'snippet': snippet})
+
+    # Return results as a list of dictionaries
+    return results
 
 def is_prime(n):
     if n <= 1:
@@ -794,20 +824,46 @@ def wiki(user_input):
         summary = wikipedia.summary(user_input, sentences=2)
         return "According to Wikipedia: " + summary
     except wikipedia.exceptions.DisambiguationError as e:
-        return "There are multiple results for your query. Try being more specific!"
+        return f"{execute_code(user_input)}"
     except wikipedia.exceptions.PageError:
-        return "No page found for your query."
+        return f"{execute_code(user_input)}"
     except Exception:
-        return execite(user_input)
+        return f"{execute_code(user_input)}"
 
-def execite(a):
-    ans = execute_code(a)
-    if ans == '' or a == '':
-        return ans
-    else:
-        return str(get_response(a))
+def execute_code(code: str):
+    """
+    Executes Python code passed as a string and returns the result.
+    :param code: Python code as a string
+    :return: The result of the executed code or an error message
+    """
+    import io
+    import contextlib
 
-def get_response(user_input):
+    # Capture the output of the code execution
+    output = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(output):
+            exec(code, {})
+        return output.getvalue().strip() or "Code executed successfully, but no output."
+    except Exception as e:
+        return f"{ans(code)}"
+
+def ans(search_query,num_results=5):
+    try:
+        search_results = google_search(search_query, num_results)
+        ans = ""
+        for i, result in enumerate(search_results, 1):
+            ans += "\n"+f"Result {i}:"
+            ans += "\n"+f"Title: {result['title']}"
+            ans += "\n"+f"Link: {result['link']}"
+            ans += "\n"+ f"Summary: {result['snippet']}"
+            ans += "\n"
+            return ans
+    except:
+        return get_response_bot(search_query)
+    
+
+def get_response_bot(user_input):
     """Generate a chatbot response using the model."""
     global chat_history_ids  # Access the global chat history variable
     
@@ -823,7 +879,7 @@ def get_response(user_input):
     # Generate a response using the model
     bot_output = model.generate(
         chat_history_ids,
-        max_length=100,
+        max_length=1000,
         pad_token_id=tokenizer.eos_token_id,
         do_sample=True,  # Enable sampling to introduce randomness
         top_k=50,        # Limit to top-k words for generation
@@ -1321,6 +1377,11 @@ def main():
             speak("What code do you want to execute.")
             code = input("Type code here: ")
             execute_code(code)
+
+        elif "google search" == command:
+            speak("What do you want to search.")
+            num = listen()
+            ans(num)
 
         else:
             answer = get_response(command)
