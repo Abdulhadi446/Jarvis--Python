@@ -47,6 +47,16 @@ def speak(text):
     print("Jarvis: " + text)
     engine.runAndWait()
 
+def execute_code(code: str):
+    """Execute Python code provided by the user."""
+    local_vars = {}
+    try:
+        exec(code, {}, local_vars)
+    except Exception as e:
+        return {"error": str(e)}
+    
+    return local_vars
+
 def listen():
     """Listen to the user's command."""
     with sr.Microphone() as source:
@@ -782,13 +792,23 @@ def wiki(user_input):
     """Fetch information from Wikipedia."""
     try:
         summary = wikipedia.summary(user_input, sentences=2)
-        return("According to wikipedia "+summary)
-    except wikipedia.exceptions.DisambiguationError:
-        return get_response(user_input)
+        return "According to Wikipedia: " + summary
+    except wikipedia.exceptions.DisambiguationError as e:
+        return "There are multiple results for your query. Try being more specific!"
+    except wikipedia.exceptions.PageError:
+        return "No page found for your query."
     except Exception:
-        return get_response(user_input)
+        return execite(user_input)
+
+def execite(a):
+    ans = execute_code(a)
+    if ans == '' or a == '':
+        return ans
+    else:
+        return str(get_response(a))
 
 def get_response(user_input):
+    """Generate a chatbot response using the model."""
     global chat_history_ids  # Access the global chat history variable
     
     # Encode the user input and add the end-of-sentence token
@@ -800,24 +820,20 @@ def get_response(user_input):
     else:
         chat_history_ids = new_input_ids
 
-    # Create an attention mask for the chat history
-    attention_mask = torch.ones(chat_history_ids.shape, dtype=torch.long)
-
     # Generate a response using the model
     bot_output = model.generate(
         chat_history_ids,
-        attention_mask=attention_mask,
-        max_length=1000,
+        max_length=100,
         pad_token_id=tokenizer.eos_token_id,
-        do_sample=True,        # Enable sampling to introduce randomness
-        top_k=50,               # Limit to top-k words for generation
-        top_p=0.95              # Nucleus sampling
+        do_sample=True,  # Enable sampling to introduce randomness
+        top_k=50,        # Limit to top-k words for generation
+        top_p=0.95       # Nucleus sampling
     )
     
-    # Decode the bot's response and trim it from the history length
+    # Decode the bot's response and extract the new part
     response = tokenizer.decode(bot_output[:, chat_history_ids.shape[-1]:][0], skip_special_tokens=True)
     
-    # Introduce varied responses if the model output is a repetition of the input
+    # Handle repetitive responses
     response_variations = [
         "That's an interesting question!",
         "Let me think about that...",
@@ -825,12 +841,11 @@ def get_response(user_input):
         "Can you clarify what you mean?",
         "That's a bit tricky!"
     ]
-    
-    # Adjust response if it is overly repetitive
+    # 
     if response.strip() in [user_input, user_input + '?']:
         response = random.choice(response_variations)
-    first_line = response.split('\n')[0]
-    return "Bot: "+first_line
+    
+    return "Bot: " + response.split('\n')[0]  # Return the first line of the response
 
 def main():
     greet()
@@ -1066,9 +1081,11 @@ def main():
                 speak(str(s[::-1]))
 
         elif "hex to rgb" == command:
+            speak("Say the hex value to convert into rbg.")
+            hex_color = listen()
             hex_color = hex_color.lstrip('#')
             speak(str(tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))))
-
+        
         elif "longest word" == command:
             speak("Say sentence to get longest word.")
             sentence = listen()
@@ -1299,7 +1316,11 @@ def main():
         elif "set volume to 0" == command or command == "mute" or "mute volume" == command:
             speak("Volume is set to 0%")
             set_system_volume(0)
-            
+        
+        elif "execute code" == command:
+            speak("What code do you want to execute.")
+            code = input("Type code here: ")
+            execute_code(code)
 
         else:
             answer = get_response(command)
