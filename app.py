@@ -1,3 +1,5 @@
+import io
+import contextlib
 import speech_recognition as sr
 import pyttsx3
 import wikipedia
@@ -128,6 +130,7 @@ def google_search(query, num_results=5):
 
     # Return results as a list of dictionaries
     return results
+
 
 def is_prime(n):
     if n <= 1:
@@ -806,17 +809,18 @@ def get_further_expanded_response(user_input):
 
         #My questions
         "" : "",
-        "what are smart watches":"Smart watches are the watches but they have few capablities to do small things."
+        "what are smart watches":"Smart watches are the watches but they have few capablities to do small things like smart phones."
     }
-    return further_expanded_responses.get(user_input.lower(), f"{count(user_input)}")
+    return further_expanded_responses.get(user_input.lower(), f"{runCMD(user_input)}")
 
-def count(noString):
-    No = 0
+    
+# run cmd
+def runCMD(cmd):
     try:
-        No = eval(noString)  # Evaluates expressions like "1 + 2" to 3
-        return f"{noString} is equal to {str(No)}."
-    except Exception:
-        return f"{wiki(noString)}"
+        result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=True)
+        return("Command output:", result.stdout)
+    except:
+        return f"{wiki(cmd)}"
 
 def wiki(user_input):
     """Fetch information from Wikipedia."""
@@ -836,9 +840,6 @@ def execute_code(code: str):
     :param code: Python code as a string
     :return: The result of the executed code or an error message
     """
-    import io
-    import contextlib
-
     # Capture the output of the code execution
     output = io.StringIO()
     try:
@@ -846,19 +847,29 @@ def execute_code(code: str):
             exec(code, {})
         return output.getvalue().strip() or "Code executed successfully, but no output."
     except Exception as e:
-        return f"{ans(code)}"
+        return f"{count(code)}"
+    
 
-def ans(search_query,num_results=5):
+def count(noString):
+    No = 0
+    try:
+        No = eval(noString)  # Evaluates expressions like "1 + 2" to 3
+        return f"{noString} is equal to {str(No)}."
+    except Exception:
+        return f"{ans(noString)}"
+
+# how to make an OS but cmd base || how to remake the google
+def ans(search_query,num_results = 5):
     try:
         search_results = google_search(search_query, num_results)
         ans = ""
         for i, result in enumerate(search_results, 1):
-            ans += "\n"+f"Result {i}:"
-            ans += "\n"+f"Title: {result['title']}"
-            ans += "\n"+f"Link: {result['link']}"
-            ans += "\n"+ f"Summary: {result['snippet']}"
-            ans += "\n"
-            return ans
+            # ans += f"\nResult {i}:\n"
+            ans += f"\nTitle: {result['title']}\n"
+            ans += f"You can get information from there: {result['link']}\n"
+            ans += f"Summary: {result['snippet']}\n"
+
+        return ans  # Move return statement outside the loop
     except:
         return get_response_bot(search_query)
     
